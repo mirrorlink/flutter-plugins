@@ -64,22 +64,31 @@ public class SwiftAudioStreamerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
     }
 
     func startRecording() {
-        engine = AVAudioEngine()
       
-        try! AVAudioSession.sharedInstance().setCategory(AVAudioSession.Category.playAndRecord, options: .mixWithOthers)
-        try! AVAudioSession.sharedInstance().setActive(true)
-      
-        let input = engine.inputNode
-        let bus = 0
+      do {
+          engine = AVAudioEngine()
 
-        input.installTap(onBus: bus, bufferSize: 22050, format: input.inputFormat(forBus: bus)) { (buffer, time) -> Void in
-            let samples = buffer.floatChannelData?[0]
-            // audio callback, samples in samples[0]...samples[buffer.frameLength-1]
-            let arr = Array(UnsafeBufferPointer(start: samples, count: Int(buffer.frameLength)))
-            self.emitValues(values: arr)
+          try! AVAudioSession.sharedInstance().setCategory(AVAudioSession.Category.playAndRecord, options: .mixWithOthers)
+          try! AVAudioSession.sharedInstance().setActive(true)
+
+          let input = engine.inputNode
+          let bus = 0
+
+          input.installTap(onBus: bus, bufferSize: 22050, format: input.inputFormat(forBus: bus)) { (buffer, time) -> Void in
+              let samples = buffer.floatChannelData?[0]
+              // audio callback, samples in samples[0]...samples[buffer.frameLength-1]
+              let arr = Array(UnsafeBufferPointer(start: samples, count: Int(buffer.frameLength)))
+              self.emitValues(values: arr)
+          }
+
+          try! engine.start()
+      
+     } catch {
+        print(error)
+        if (eventSink != nil) {
+          eventSink!(FlutterError(code: "101", message: "Mic already in Use", details: "Another process is using the mic."))
         }
-
-        try! engine.start()
+      }
     }
 
 }
